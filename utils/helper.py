@@ -77,7 +77,7 @@ class QuestionParser:
         for idx, answer in self.answers.iterrows():
             if answer.Type == "Formelfrage":
                 correct_ilias = overview[answer.ID]
-                if cfg.use_excecptions:
+                if cfg.use_exceptions:
                     question_pool[answer.ID] = q.FormelfrageExceptions(answer, detailed_ilias, correct_ilias)
                 else:
                     question_pool[answer.ID] = q.Formelfrage(answer, detailed_ilias, correct_ilias)
