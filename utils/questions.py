@@ -1,5 +1,5 @@
 import pandas as pd
-import utils.config as cfg
+import utils.exam_config as cfg
 from math import *
 
 

@@ -1,4 +1,4 @@
-import utils.config as cfg
+import utils.exam_config as cfg
 from utils.helper import Cache, ExportReview, IliasReader
 import numpy as np
 

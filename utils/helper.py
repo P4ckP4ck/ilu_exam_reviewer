@@ -1,5 +1,5 @@
 import pandas as pd
-import utils.config as cfg
+import utils.exam_config as cfg
 import utils.questions as q
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Side, Border, Alignment
@@ -44,22 +44,30 @@ class IliasReader:
     def _extract_members(self):
         members = {}
         lines_with_students = ~pd.isna(self.ilias_overview.iloc[1:, 0])
-        sheet_id = 1
         for idx, line in lines_with_students.items():
             if line:
                 member_overview = self.ilias_overview.iloc[idx]
                 member_overview.index = self._get_column_names(self.ilias_overview.iloc[idx - 1])
                 member_detailed = self.ilias_export.parse(sheet_name=member_overview.loc["Name"][:cfg.max_excel_sheet_characters])
-
                 members[member_overview.loc["Matrikelnummer"]] = Member(member_overview, member_detailed)
-                sheet_id += 1
         return members
 
     def _get_column_names(self, row):
         ### TODO: explicit indexing ###
-        identifier_column_names = list(self.ilias_overview.iloc[0, :cfg.num_ilias_overview_general_columns])
-        question_column_names = list(row[cfg.num_ilias_overview_general_columns:-1])
-        return identifier_column_names + question_column_names + ["Matrikelnummer"]
+        return list(self.ilias_overview.iloc[0])
+
+
+class TestReader(IliasReader):
+
+    def _extract_members(self):
+        members = {}
+        lines_with_students = ~pd.isna(self.ilias_overview.iloc[1:, 0])
+        for idx, line in lines_with_students.items():
+            if line:
+                member_overview = self.ilias_overview.iloc[idx]
+                member_overview.index = self._get_column_names(self.ilias_overview.iloc[idx - 1])
+                members[member_overview.loc["Matrikelnummer"]] = TestMember(member_overview)
+        return members
 
 
 class QuestionParser:
@@ -119,6 +127,17 @@ class Member:
         return grading_helper.index[grading_helper][-1]
 
 
+class TestMember:
+    """
+    Member class for test evaluation (does not contain detailed questions, only "passed" / "not passed")
+    """
+    def __init__(self, overview):
+        self.id = overview.loc["Matrikelnummer"]
+        self._overview = overview
+        self.bonus_points = 1 if overview["Testergebnis als Note"] == "bestanden" else 0
+        self.name = self._overview.loc["Name"]
+
+
 class ExportReview:
 
     def __init__(self, member_dict):
@@ -126,7 +145,6 @@ class ExportReview:
         self.create_reviews(member_dict)
         self.create_psso_list(member_dict)
         self.zip_all_results()
-
 
     @staticmethod
     def set_cell_properties(cell, value, border, fill=None, wrap_text=False):
