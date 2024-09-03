@@ -20,34 +20,47 @@ if __name__ == "__main__":
         test_df = np.floor(np.clip(pd.DataFrame(test_results).T / 3, 0, 4))
 
         # read in second set of bonus points (Praktika)
+        # needs to be in format: cfg.pra_path // P1 (or P2 or P3) // file to count points per practicum
         pra_files = glob.glob(os.path.join(cfg.pra_path, '**/*.xlsx'), recursive=True)
         pra_results = {}
         for pra_file in pra_files:
+            pra_num = pra_file.split("\\")[-2]
+            assert pra_num in ["P1", "P2", "P3"]
             test = TestReader(pra_file)
             for member in test.member.values():
-                if member.id in pra_results.keys():
-                    pra_results[member.id]['Praktikum'] += member.bonus_points
-                else:
-                    pra_results[member.id] = {'Praktikum': member.bonus_points}
+                if member.id not in pra_results.keys():
+                    pra_results[member.id] = {p_id: 0 for p_id in ["P1", "P2", "P3"]}
+                pra_results[member.id][pra_num] += member.bonus_points
         pra_df = pd.DataFrame(pra_results).T
-
+        pra_df["Summe"] = pra_df.sum(axis=1)
+        pra_df.to_excel(os.path.join(cfg.base_path, "Bonuspunkte/2024s_ETG_Pra_Bonus.xlsx"))
 
         # Additionally, old bonus points are added to the new ones
-        old_pra_bonus = pd.read_excel(os.path.join(cfg.base_path, 'Bonuspunkte_23/bp_cleaned_wise2324.xlsx'))
-        old_pra_bonus.index = old_pra_bonus["Matrikelnummer"]
-        pra_df = pd.merge(pra_df, old_pra_bonus["Boni durch Praktika"], left_index=True, right_index=True, how="outer")
-        pra_df.fillna(0, inplace=True)
-        pra_df["Praktika gesamt"] = np.clip(pra_df["Boni durch Praktika"] + pra_df["Praktikum"], 0, 3)
+        bonus_files = glob.glob(os.path.join(cfg.base_path, 'Bonuspunkte\\*.xlsx'), recursive=True)
+        bonus_results = {}
+        for bonus_file in bonus_files:
+            bonus = pd.read_excel(bonus_file, index_col="Unnamed: 0")
+            for member in bonus.iterrows():
+                if member[0] not in bonus_results.keys():
+                    bonus_results[member[0]] = {p_id: 0 for p_id in ["P1", "P2", "P3"]}
+                for p_id in ["P1", "P2", "P3"]:
+                    bonus_results[member[0]][p_id] = member[1][p_id]
 
-        # ### Nachgeschriebene Klausurauswertung, nur gültig für dieses Semester
-        # nach_klausur = pd.read_csv(os.path.join(cfg.base_path, 'Noten ETG Nachholklausur 2023-11-28.csv'))
-        # # remove bonus points from students that took the exam
-        # pra_df = pra_df[~pra_df.index.isin(nach_klausur['Mat.Nr.'])]
+        bonus_df = pd.DataFrame(bonus_results).T
+        bonus_df["Summe"] = bonus_df.sum(axis=1)
+        bonus_df.to_excel(os.path.join(cfg.base_path, "2024s_ETG_Pra_Bonuspunkte_Gesamt.xlsx"))
 
-        # add both together
-        combined_df = pd.merge(test_df, pra_df["Praktika gesamt"], left_index=True, right_index=True, how='outer').fillna(0)
+        # Sanity Check Bonus Points
+        assert max(bonus_df["P1"]) == 1
+        assert max(bonus_df["P2"]) == 1
+        assert max(bonus_df["P3"]) == 1
+        assert max(bonus_df["Summe"]) == 3
+
+        # add Zwischentest and Praktika together
+        combined_df = pd.merge(test_df, bonus_df["Summe"], left_index=True, right_index=True, how='outer').fillna(0)
+        combined_df.rename(columns={"Summe": "Praktika"}, inplace=True)
         # add together columns praktika and zwischentest
-        combined_df['Bonuspunkte'] = combined_df['Praktika gesamt'] + combined_df['Zwischentest']
+        combined_df['Bonuspunkte'] = combined_df['Praktika'] + combined_df['Zwischentest']
         # clip to 5
         combined_df = np.clip(combined_df, 0, 5)
         combined_df.columns = ["Boni durch Zwischentest", "Boni durch Praktika", "Summe"]
