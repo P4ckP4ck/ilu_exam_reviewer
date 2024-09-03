@@ -17,7 +17,7 @@ if __name__ == "__main__":
                     test_results[member.id]['Zwischentest'] += member.bonus_points
                 else:
                     test_results[member.id] = {'Zwischentest': member.bonus_points}
-        test_df = np.floor(np.clip(pd.DataFrame(test_results).T / 3, 0, 3))
+        test_df = np.floor(np.clip(pd.DataFrame(test_results).T / 3, 0, 4))
 
         # read in second set of bonus points (Praktika)
         pra_files = glob.glob(os.path.join(cfg.pra_path, '**/*.xlsx'), recursive=True)
@@ -33,16 +33,16 @@ if __name__ == "__main__":
 
 
         # Additionally, old bonus points are added to the new ones
-        old_pra_bonus = pd.read_excel(os.path.join(cfg.base_path, '2023s_ETG_bonus_fixed.xlsx'))
+        old_pra_bonus = pd.read_excel(os.path.join(cfg.base_path, 'Bonuspunkte_23/bp_cleaned_wise2324.xlsx'))
         old_pra_bonus.index = old_pra_bonus["Matrikelnummer"]
         pra_df = pd.merge(pra_df, old_pra_bonus["Boni durch Praktika"], left_index=True, right_index=True, how="outer")
         pra_df.fillna(0, inplace=True)
         pra_df["Praktika gesamt"] = np.clip(pra_df["Boni durch Praktika"] + pra_df["Praktikum"], 0, 3)
 
-        ### Nachgeschriebene Klausurauswertung, nur gültig für dieses Semester
-        nach_klausur = pd.read_csv(os.path.join(cfg.base_path, 'Noten ETG Nachholklausur 2023-11-28.csv'))
-        # remove bonus points from students that took the exam
-        pra_df = pra_df[~pra_df.index.isin(nach_klausur['Mat.Nr.'])]
+        # ### Nachgeschriebene Klausurauswertung, nur gültig für dieses Semester
+        # nach_klausur = pd.read_csv(os.path.join(cfg.base_path, 'Noten ETG Nachholklausur 2023-11-28.csv'))
+        # # remove bonus points from students that took the exam
+        # pra_df = pra_df[~pra_df.index.isin(nach_klausur['Mat.Nr.'])]
 
         # add both together
         combined_df = pd.merge(test_df, pra_df["Praktika gesamt"], left_index=True, right_index=True, how='outer').fillna(0)

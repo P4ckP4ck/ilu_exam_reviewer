@@ -1,5 +1,5 @@
 import os
-base_path = 'WiSe2023'
+base_path = 'SoSe24'
 pra_path = os.path.join(base_path, 'Praktika')
 test_path = os.path.join(base_path, 'Zwischentests')
 
