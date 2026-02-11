@@ -6,7 +6,7 @@ from openpyxl.styles import PatternFill, Side, Border, Alignment
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 import os
-import pyminizip
+# import pyminizip
 import string
 import random
 
@@ -14,11 +14,11 @@ import random
 class Cache:
 
     def __init__(self):
-        self.formelfragen_pool = pd.read_excel(cfg.formelfragen_database_path)
-        self.formelfragen_pool.index = self.formelfragen_pool["question_title"]
-
-        self.single_choice_pool = pd.read_excel(cfg.single_choice_database_path)
-        self.single_choice_pool.index = self.single_choice_pool["question_title"]
+        # self.formelfragen_pool = pd.read_excel(cfg.formelfragen_database_path)
+        # self.formelfragen_pool.index = self.formelfragen_pool["question_title"]
+        #
+        # self.single_choice_pool = pd.read_excel(cfg.single_choice_database_path)
+        # self.single_choice_pool.index = self.single_choice_pool["question_title"]
 
         self.bonuspunkte = {}
         for _, bonus in pd.read_excel(cfg.bonuspunkte_path).iterrows():
@@ -49,6 +49,9 @@ class IliasReader:
                 member_overview = self.ilias_overview.iloc[idx]
                 member_overview.index = self._get_column_names(self.ilias_overview.iloc[idx - 1])
                 member_detailed = self.ilias_export.parse(sheet_name=member_overview.loc["Name"][:cfg.max_excel_sheet_characters])
+                member_detailed.columns = ["Type", "ID", "Entries"]
+                member_detailed["ID"].fillna(member_detailed["Entries"], inplace=True)
+                member_detailed = member_detailed[["Type", "ID"]]
                 members[member_overview.loc["Matrikelnummer"]] = Member(member_overview, member_detailed)
         return members
 
@@ -73,12 +76,12 @@ class TestReader(IliasReader):
 class QuestionParser:
 
     def __init__(self, overview, detailed_ilias):
-        self.answers = detailed_ilias[detailed_ilias.iloc[:, 0].isin(cfg.question_identifiers)].copy()
-        self.answers.columns = ["Type", "ID"]
+        self.answers = detailed_ilias[detailed_ilias["Type"].isin(cfg.question_identifiers)].copy()
         self.answers.loc[:, "idx_from"] = list(self.answers.index)
         self.answers.loc[:, "idx_to"] = list(self.answers.index)[1:] + [len(detailed_ilias)]
         self.answers.reset_index(inplace=True, drop=True)
-        self.pool = self._parse_ilias_questions(overview, detailed_ilias)
+        if cfg.question_identifiers:
+            self.pool = self._parse_ilias_questions(overview, detailed_ilias)
 
     def _parse_ilias_questions(self, overview, detailed_ilias):
         question_pool = {}
@@ -104,17 +107,22 @@ class Member:
     def __init__(self, overview, detailed):
         self.id = overview.loc["Matrikelnummer"]
         self._overview = overview
-        self._detailed = detailed
-        self.questions = QuestionParser(overview, detailed)
+        if cfg.recalculate_ilias_results:
+            self._detailed = detailed
+            self.questions = QuestionParser(overview, detailed)
         self.bonus_points = cfg.cache.get_bonuspoints(self.id)
         self.name = self._overview.loc["Name"]
 
+
     @property
     def exam_points(self):
-        points = 0
-        for id, question in self.questions.pool.items():
-            if question.correct:
-                points += 1
+        if cfg.recalculate_ilias_results:
+            points = 0
+            for id, question in self.questions.pool.items():
+                if question.correct:
+                    points += 1
+        else:
+            points = self._overview.loc["Testergebnis in Punkten"]
         return points
 
     @property
@@ -141,10 +149,10 @@ class TestMember:
 class ExportReview:
 
     def __init__(self, member_dict):
-        self.member_export = pd.read_excel(cfg.ilias_member_export, index_col="Matrikelnummer")
-        self.create_reviews(member_dict)
+        # self.member_export = pd.read_excel(cfg.ilias_member_export, index_col="Matrikelnummer")
+        # self.create_reviews(member_dict)
         self.create_psso_list(member_dict)
-        self.zip_all_results()
+        # self.zip_all_results()
 
     @staticmethod
     def set_cell_properties(cell, value, border, fill=None, wrap_text=False):
