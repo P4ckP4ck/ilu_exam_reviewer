@@ -32,6 +32,6 @@ if __name__ == "__main__":
         member_dict.update(results[file_path].member)
 
     # delete NaN Matrikelnummer --> Eberhard, etc
-    del member_dict[np.nan]
+    # del member_dict[np.nan]
 
     exporter = ExportReview(member_dict)

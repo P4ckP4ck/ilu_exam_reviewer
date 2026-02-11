@@ -19,7 +19,7 @@ class Formelfrage(Frage):
     def __init__(self, answer, detailed_ilias, correct_ilias):
         super().__init__(answer, detailed_ilias, correct_ilias)
         self._database = cfg.cache.formelfragen_pool
-        formelfrage = self._database.loc[answer.ID]
+        formelfrage = self._database.loc[answer.ID[4:]]
         for column in self._database.columns:
             setattr(self, "_" + column, formelfrage[column])
         self._user_entry = detailed_ilias.iloc[answer.idx_from:answer.idx_to, :][1:]

@@ -2,5 +2,4 @@ pandas
 numpy
 openpyxl
 beautifulsoup4
-pyminizip
 tqdm
